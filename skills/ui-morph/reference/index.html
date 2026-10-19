@@ -1,0 +1,446 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fennick · UI morph · Fictional company example</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #efe7da; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+</style>
+<canvas id="c" width="1440" height="1440"></canvas>
+<script src="kit.js"></script>
+<script>
+// A frame-locked remake of @twoclipping's UI morph (see SPEC.md) with Fennick's content
+// (a fictional sparkling-tea shop made for omnigami's examples, cast/fennick/): one container
+// that never cuts, every box, time and spring from the reference; the words, icons, colours,
+// the can and the data are Fennick's.
+(() => {
+  const { clamp, lerp, ramp, spring, track, loadFont, loadImage, measure, roundRect, easeOutExpo, easeInOutCubic } = window.kit;
+  const W = 1440, H = 1440, CX = 720, CY = 720, FPS = 60, DURATION = 14;
+  const canvas = document.getElementById('c');
+  const g = canvas.getContext('2d', { willReadFrequently: true });
+  const layer = document.createElement('canvas'); layer.width = W; layer.height = H;
+  const L = layer.getContext('2d', { willReadFrequently: true });
+  const F = (w) => (s) => `${w} ${s}px "DM Sans"`;
+  const MONO = (w) => (s) => `${w} ${s}px "DM Sans"`; // DM Sans with tabular figures for times and counts
+  // ADAPT: the brand's colours (cast/fennick/brand.md): its ink and paper are the container's two
+  // ends; GREY and FAINT its muted text; LIGHT the words on the dark container; YUZU the can's field.
+  const INK = '#1D1A16', PAPER = '#FBF6EE', GREY = '#6E665C', FAINT = '#B3AA9C', LIGHT = '#FBF6EE', DIM = '#A39A8C', TRACK = '#3A352E', YUZU = '#F7CC33';
+  const rgbOf = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const A = { can: null };
+
+  // ---------- the words: named fields, editable without touching the code ----------
+  const DEFAULTS = { button: 'Build your box', title: 'Yuzu & Fennel', subtitle: 'Box #10482 · every 4 weeks', caption: 'cans shipped', search: 'Find a flavour', toast: 'Tea, but it fizzes.' };
+  const FIELDS = [
+    { id: 'button', type: 'text', label: 'Button', maxLength: 16, help: 'The call to action. It opens and closes the loop.' },
+    { id: 'title', type: 'text', label: 'Card title', maxLength: 18 },
+    { id: 'subtitle', type: 'text', label: 'Card subtitle', maxLength: 26 },
+    { id: 'caption', type: 'text', label: 'Chart caption', maxLength: 22 },
+    { id: 'search', type: 'text', label: 'Search placeholder', maxLength: 22 },
+    { id: 'toast', type: 'text', label: 'Closing line', maxLength: 24, help: 'The toast the film ends on.' },
+  ];
+  let V = DEFAULTS; // set from seek's arguments on every frame
+
+  // ---------- the container: every box from the reference, at 1440 px ----------
+  // [t, w, h, radius (null = pill), lum (0 black … 1 white), cx, cy]
+  const BOX = [
+    [0.00, 641, 205, null, 0.03, CX, CY],   // button
+    [0.55, 221, 221, null, 0.03, CX, CY],   // loader
+    [0.93, 230, 230, null, 0.03, CX, CY],   // check
+    [1.27, 863, 219, null, 0.03, CX, CY],   // island
+    [1.80, 996, 633, 67, 0.03, CX, CY],     // player → watch card
+    [3.72, 1075, 185, null, 0.03, CX, CY],  // slider
+    [5.27, 490, 274, null, 0.03, CX, CY],   // toggle
+    [6.27, 1191, 169, null, 1, CX, CY],     // tabs
+    [7.27, 1099, 843, 44, 1, CX, CY],       // chart
+    [9.73, 871, 210, 59, 1, CX, CY],        // search
+    [10.07, 1039, 813, 35, 1, CX, CY],      // palette
+    [10.60, 1243, 571, 41, 1, CX, CY],      // palette, filtered
+    [11.77, 965, 180, null, 0.03, CX, CY],  // toast
+    [12.57, 641, 205, null, 0.03, CX, CY],  // button
+  ];
+  // the toggle's track colour flips on the beat (on = black, off = light grey)
+  const TOGGLE = [[5.27, 1], [5.55, 0], [5.85, 1], [6.10, 0]];
+  const K = [280, 19]; // container spring: damping ≈0.57, a visible overshoot on every morph
+
+  // ---------- the shapes: one design, laid out for each frame ----------
+  // Every number in this film is in design units, the square film's pixels. A shape
+  // scales the design by k into its frame, centred, and can give a state a box that
+  // suits the frame better: [w, h] by BOX row. Content draws relative to its box, so
+  // it follows; the cursor follows the box it works on (the last field of CUR).
+  const SHAPES = {
+    '1:1': { size: [1440, 1440], k: 1, box: {} },
+    '16:9': { size: [1920, 1080], k: 1.15, box: { 8: [1300, 760], 10: [1150, 800], 11: [1400, 571] } },
+    '9:16': { size: [1080, 1920], k: 0.95, box: { 4: [940, 680], 5: [820, 185], 7: [960, 169], 8: [960, 1000], 10: [900, 813], 11: [1000, 600] } },
+  };
+  let S; // the current shape's layout, set from seek's arguments on every frame
+
+  // ---------- the cursor (screen px), clicks and drags ----------
+  const START = [1268, 1124];
+  // [arrival time, x, y, on]: the cursor arrives on these beats, moving fast and landing soft.
+  // on: the BOX row the point works on (it moves with that box in every shape), 'frame'
+  // for the corners it enters from and leaves by, or null for a point in passing.
+  const CUR = [
+    [0, ...START, 'frame'], [0.4, 880, 790, 0], [0.55, 880, 790, 0], [0.95, 1010, 900, null], [1.3, 1150, 960, null], [1.65, 1062, 742, 3], [1.78, 1062, 742, 3],
+    [2.2, 730, 955, 4], [2.76, 730, 955, 4], [2.8, 519, 781, 4], [3.52, 1060, 781, 4], [3.62, 1060, 781, 4],
+    [3.9, 1070, 736, 5], [4.0, 1070, 736, 5], [4.37, 420, 736, 5], [4.53, 420, 736, 5], [4.8, 1342, 736, 5], [5.1, 1352, 738, 5],
+    [5.42, 820, 770, 6], [5.6, 820, 770, 6], [5.78, 700, 770, 6], [6.12, 700, 770, 6], [6.55, 740, 748, 7], [6.85, 740, 748, 7], [7.02, 1128, 748, 7], [7.12, 1128, 748, 7],
+    [7.55, 1050, 1000, 8], [7.85, 272, 872, 8], [8.8, 1190, 872, 8], [9.08, 726, 412, 8], [9.22, 726, 412, 8],
+    [9.62, 820, 780, 9], [10.0, 820, 780, 9], [10.2, 1010, 1010, 10], [10.6, 1296, 1150, null], [11.9, 1390, 1060, null], [12.9, 1560, 1420, 'frame'], [13.5, 1560, 1420, 'frame'], [13.9, ...START, 'frame'],
+  ];
+  // the drags are near-linear (the hand moves steadily); every other move eases
+  const LINEAR = new Set([[2.8, 3.52], [4.0, 4.37], [4.53, 4.8], [7.85, 8.8]].map((x) => x.join()));
+  function cursorAt(t) {
+    if (t > 7.85 && t < 8.8) { const [x] = rawCursor(t); return [x + 6, chartLineY(x) + 48]; } // riding just under the line
+    return rawCursor(t);
+  }
+  function rawCursor(t) {
+    const CUR = S.cur;
+    if (t <= CUR[0][0]) return [CUR[0][1], CUR[0][2]];
+    for (let i = 1; i < CUR.length; i++) if (t <= CUR[i][0]) {
+      const [ta, xa, ya] = CUR[i - 1], [tb, xb, yb] = CUR[i];
+      const p = (t - ta) / (tb - ta), e = LINEAR.has([ta, tb].join()) ? lerp(p, easeInOutCubic(p), 0.35) : 1 - (1 - p) ** 3.2;
+      return [lerp(xa, xb, e), lerp(ya, yb, e)];
+    }
+    const e = CUR[CUR.length - 1]; return [e[1], e[2]];
+  }
+  const layouts = {};
+  function layoutFor(size) {
+    if (layouts[size]) return layouts[size];
+    const shape = SHAPES[size] || SHAPES['1:1'], [fw, fh] = shape.size, k = shape.k;
+    const boxes = BOX.map((b, i) => (shape.box[i] ? [b[0], ...shape.box[i], ...b.slice(3)] : b));
+    const keys = (i) => boxes.map((b) => [b[0], b[i]]);
+    const lum = boxes.map((b) => [b[0], b[4]]);
+    for (const [t, on] of TOGGLE) lum.push([t + 0.001, on ? 0.03 : 0.82]);
+    lum.sort((a, b) => a[0] - b[0]);
+    // a design x or y on BOX row i, moved with that row's box in this shape
+    const onX = (i, x) => boxes[i][5] + (x - BOX[i][5]) * boxes[i][1] / BOX[i][1];
+    const onY = (i, y) => boxes[i][6] + (y - BOX[i][6]) * boxes[i][2] / BOX[i][2];
+    const cur = CUR.map(([t, x, y, on]) => on === 'frame' ? [t, CX + (x - CX) * (fw / W) / k, CY + (y - CY) * (fh / H) / k]
+      : on == null ? [t, x, y] : [t, onX(on, x), onY(on, y)]);
+    return (layouts[size] = {
+      size: shape.size, k, ox: fw / 2 - CX * k, oy: fh / 2 - CY * k, boxes, cur, onX,
+      KW: keys(1), KH: keys(2), KX: keys(5), KY: keys(6), KR: boxes.map((b) => [b[0], b[3] == null ? b[2] / 2 : b[3]]), lum,
+    });
+  }
+  const CLICKS = [0.5, 1.73, 2.33, 2.7, 5.55, 5.85, 6.1, 6.8, 7.07, 9.17, 9.73];
+  const DRAGS = [[2.8, 3.57], [4.0, 5.1]];
+  const pressed = (t) => CLICKS.some((c) => t >= c - 0.04 && t < c + 0.08) || DRAGS.some(([a, b]) => t >= a && t < b);
+
+  // ---------- the geometry at time t ----------
+  function box(t) {
+    let w = track(t, S.KW, ...K), h = track(t, S.KH, ...K), cx = track(t, S.KX, ...K), cy = track(t, S.KY, ...K);
+    let r = track(t, S.KR, ...K);
+    // the slider stretches when dragged past its end, and springs back on release
+    const sl = sliderGeom(S.boxes[5][1], CX);
+    const stretchAt = (tt) => (tt >= 4.0 && tt < 5.1 ? Math.max(0, cursorAt(tt)[0] - sl.right) * 0.62 : 0);
+    let extra = stretchAt(t);
+    if (t >= 5.1 && t < 5.27) extra = stretchAt(5.0999) * (1 - spring(t - 5.1, 320, 14));
+    w += extra; cx += extra / 2;
+    r = Math.min(r, w / 2, h / 2);
+    return { w, h, cx, cy, r, x: cx - w / 2, y: cy - h / 2, lum: clamp(track(t, S.lum, 400, 40)) };
+  }
+  const sliderGeom = (w, cx) => ({ left: cx - w / 2 + 0.196 * 1075, right: cx + w / 2 - 84 });
+
+  // ---------- content, one function per state ----------
+  function textAt(c, s, x, y, font, size, colour, align = 'left') {
+    c.font = font(size); c.fillStyle = colour; c.textAlign = align; window.kit.centreText(c, s, x, y);
+    return measure(c, font(size), s);
+  }
+  function tileArt(c, x, y, s) { // where the reference has album art: the Yuzu & Fennel can on its colour
+    roundRect(c, x, y, s, s, s * 0.22); c.fillStyle = YUZU; c.fill();
+    c.save(); roundRect(c, x, y, s, s, s * 0.22); c.clip();
+    const h = s * 0.92, w = h * A.can.width / A.can.height; c.drawImage(A.can, x + s / 2 - w / 2, y + s * 0.06, w, h); c.restore();
+  }
+  const C = {};
+  C.button = (c, b) => textAt(c, V.button, b.cx, b.cy + 2, F(600), b.h * 0.27, LIGHT, 'center');
+  C.loader = (c, b, age) => {
+    const r = b.h * 0.2, a0 = age * 9.5, span = Math.PI * (1.15 + 0.35 * Math.sin(age * 7));
+    c.strokeStyle = LIGHT; c.lineWidth = b.h * 0.05; c.lineCap = 'round';
+    c.beginPath(); c.arc(b.cx, b.cy, r, a0, a0 + span); c.stroke();
+  };
+  C.check = (c, b, age) => {
+    const p = easeOutExpo(clamp((age - 0.04) / 0.2)), s = b.h;
+    const pts = [[-0.16, 0.01], [-0.05, 0.12], [0.17, -0.12]].map(([x, y]) => [b.cx + x * s, b.cy + y * s]);
+    const l1 = Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]), l2 = Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]);
+    let d = p * (l1 + l2);
+    c.strokeStyle = LIGHT; c.lineWidth = s * 0.075; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(...pts[0]);
+    const q = Math.min(1, d / l1); c.lineTo(lerp(pts[0][0], pts[1][0], q), lerp(pts[0][1], pts[1][1], q));
+    if (d > l1) { const q2 = (d - l1) / l2; c.lineTo(lerp(pts[1][0], pts[2][0], q2), lerp(pts[1][1], pts[2][1], q2)); }
+    c.stroke();
+  };
+  C.island = (c, b, age, t) => {
+    const s = b.h * 0.6; tileArt(c, b.x + b.h * 0.2, b.cy - s / 2, s);
+    for (let i = 0; i < 6; i++) { // bubbles rising: Fennick's signature, the can fizzing
+      const ph = (t * 0.85 + i * 0.37) % 1, x = b.x + b.w - b.h * 0.2 - (i % 3) * b.h * 0.11 - (i > 2 ? b.h * 0.05 : 0);
+      const y = b.y + b.h * (0.82 - 0.64 * ph), r = b.h * (0.028 + 0.018 * ph);
+      c.globalAlpha = Math.sin(Math.PI * ph); c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = LIGHT; c.fill();
+    }
+    c.globalAlpha = 1;
+  };
+  // the watch card: pause / resume and scrub through the week
+  const weekAt = (t) => {
+    const x0 = S.onX(4, 282), x1 = S.onX(4, 1158);
+    if (t >= 2.8 && t < 3.57) { const x = cursorAt(t)[0]; return clamp((x - x0) / (x1 - x0)); }
+    if (t < 2.33) return 0.25 + (t - 1.8) * 0.035;
+    if (t < 2.7) return 0.25 + 0.53 * 0.035;
+    if (t < 2.8) return 0.2685 + (t - 2.7) * 0.035;
+    const v = clamp((cursorAt(3.5699)[0] - x0) / (x1 - x0)); return v + (t - 3.57) * 0.03;
+  };
+  const DAYS = ['Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue']; // from the day the box is packed
+  C.player = (c, b, age, t) => {
+    const pad = b.w * 0.058, art = b.h * 0.36;
+    tileArt(c, b.x + pad, b.y + pad * 0.95, art);
+    textAt(c, V.title, b.x + pad * 1.6 + art, b.y + pad * 0.95 + art * 0.33, F(600), b.h * 0.07, LIGHT);
+    textAt(c, V.subtitle, b.x + pad * 1.6 + art, b.y + pad * 0.95 + art * 0.62, F(400), b.h * 0.05, DIM);
+    const x0 = b.x + pad, x1 = b.x + b.w - pad, y = b.y + b.h * 0.59, v = clamp(weekAt(t));
+    roundRect(c, x0, y - 4, x1 - x0, 8, 4); c.fillStyle = TRACK; c.fill();
+    roundRect(c, x0, y - 4, (x1 - x0) * v, 8, 4); c.fillStyle = LIGHT; c.fill();
+    const drag = t >= 2.76 && t < 3.66 ? clamp((t - 2.76) / 0.08) * (1 - clamp((t - 3.57) / 0.09)) : 0;
+    if (drag > 0) { c.beginPath(); c.arc(x0 + (x1 - x0) * v, y, 8 + 10 * drag, 0, Math.PI * 2); c.fillStyle = LIGHT; c.fill(); }
+    // the box's week: packed Wednesday, shipped Thursday, out for delivery and delivered Saturday
+    const hours = v * 7 * 24, day = DAYS[Math.min(6, Math.floor(hours / 24))], hh = String(Math.floor(hours % 24)).padStart(2, '0');
+    const stage = hours < 24 ? 'Packed' : hours < 72 ? 'Shipped' : hours < 81 ? 'Out for delivery' : 'Delivered';
+    textAt(c, `${day} ${hh}:00`, x0, y + b.h * 0.085, MONO(400), b.h * 0.045, DIM);
+    textAt(c, stage, x1, y + b.h * 0.085, MONO(500), b.h * 0.045, DIM, 'right');
+    // controls: previous flavour, pause / resume the box, next flavour
+    const cy = b.y + b.h * 0.84, s = b.h * 0.045;
+    const skip = (x, dir) => { for (const o of [0, 1]) { c.beginPath(); const bx = x + dir * (o * s * 0.9 - s * 0.45); c.moveTo(bx - dir * s * 0.45, cy - s * 0.5); c.lineTo(bx + dir * s * 0.45, cy); c.lineTo(bx - dir * s * 0.45, cy + s * 0.5); c.closePath(); c.fill(); } c.fillRect(x + dir * s * 0.95 - s * 0.08, cy - s * 0.5, s * 0.16, s); };
+    c.fillStyle = LIGHT; skip(b.cx - b.w * 0.14, -1); skip(b.cx + b.w * 0.14, 1);
+    // pause ↔ play morph: two bars become two halves of a triangle
+    const toPlay = t < 2.7 ? spring(t - 2.33, 420, 22) : 1 - spring(t - 2.7, 420, 22), p = clamp(t < 2.33 ? 0 : toPlay);
+    const ps = s * 1.25, px = b.cx, bw = ps * 0.34, gap = ps * 0.18;
+    const pauseL = [[px - gap / 2 - bw, cy - ps / 2], [px - gap / 2, cy - ps / 2], [px - gap / 2, cy + ps / 2], [px - gap / 2 - bw, cy + ps / 2]];
+    const pauseR = [[px + gap / 2, cy - ps / 2], [px + gap / 2 + bw, cy - ps / 2], [px + gap / 2 + bw, cy + ps / 2], [px + gap / 2, cy + ps / 2]];
+    const tx = px - ps * 0.38, tw = ps * 0.95;
+    const playL = [[tx, cy - ps / 2], [tx + tw / 2, cy - ps / 4], [tx + tw / 2, cy + ps / 4], [tx, cy + ps / 2]];
+    const playR = [[tx + tw / 2, cy - ps / 4], [tx + tw, cy], [tx + tw, cy], [tx + tw / 2, cy + ps / 4]];
+    for (const [A, B] of [[pauseL, playL], [pauseR, playR]]) { c.beginPath(); A.forEach((pt, i) => { const q = [lerp(pt[0], B[i][0], p), lerp(pt[1], B[i][1], p)]; i ? c.lineTo(...q) : c.moveTo(...q); }); c.closePath(); c.fill(); }
+  };
+  // the fizz: bubbles that appear as the level rises, a bar the cursor drags, stretching past the end
+  const levelAt = (t) => {
+    const sl = sliderGeom(S.boxes[5][1], CX);
+    if (t >= 4.0 && t < 5.1) return clamp((cursorAt(t)[0] - sl.left) / (sl.right - sl.left));
+    if (t < 4.0) return clamp((cursorAt(3.9999)[0] - sl.left) / (sl.right - sl.left));
+    return 1;
+  };
+  C.slider = (c, b, age, t) => {
+    const v = levelAt(t), s = b.h * 0.2, ix = b.x + 0.075 * 1075, cy = b.cy;
+    // a bubble, and up to three more that rise from it as the level rises, each on its own spring
+    c.fillStyle = LIGHT; c.strokeStyle = LIGHT; c.lineWidth = s * 0.13;
+    c.beginPath(); c.arc(ix - s * 0.15, cy + s * 0.3, s * 0.36, 0, Math.PI * 2); c.stroke();
+    const levels = [[4.0, v0(4.0)], ...[4.1, 4.2, 4.3, 4.37, 4.6, 4.7, 4.77, 4.8].map((tt) => [tt, v0(tt)])];
+    for (let k = 0; k < 3; k++) {
+      const on = track(t, levels.map(([tt, lv]) => [tt, lv > 0.14 + k * 0.28 ? 1 : 0]), 520, 20);
+      if (on <= 0.02) continue;
+      const r = s * (0.21 - k * 0.04) * (0.5 + 0.5 * on), bx = ix + s * [0.38, -0.05, 0.42][k], by = cy - s * (0.12 + 0.33 * k) + (1 - on) * s * 0.2;
+      c.globalAlpha = clamp(on); c.beginPath(); c.arc(bx, by, r, 0, Math.PI * 2); c.fill();
+    }
+    c.globalAlpha = 1;
+    const sl = { left: b.x + 0.196 * 1075, right: b.x + b.w - 84 }, hgt = b.h * 0.19;
+    const fade = clamp((t - 5.2) / 0.1); // the fill greys out as it becomes the toggle
+    roundRect(c, sl.left, cy - hgt / 2, sl.right - sl.left, hgt, hgt / 2); c.fillStyle = TRACK; c.fill();
+    roundRect(c, sl.left, cy - hgt / 2, Math.max(hgt, (sl.right - sl.left) * v), hgt, hgt / 2);
+    const lt = rgbOf(LIGHT), gk = lerp(1, 0.6, fade); c.fillStyle = `rgb(${lt.map((x) => Math.round(x * gk)).join(',')})`; c.fill();
+  };
+  const v0 = (tt) => levelAt(tt);
+  // the toggle: the knob's two edges ride different springs, so it stretches as it travels
+  C.toggle = (c, b, age, t) => {
+    const inset = b.h * 0.055, r = b.h / 2 - inset, onX = b.x + b.w - inset - r, offX = b.x + inset + r;
+    const tk = TOGGLE.map(([tt, on]) => [tt, on ? onX : offX]);
+    const lead = track(t, tk, 560, 26), trail = track(t, tk, 190, 17);
+    const a = Math.min(lead, trail) - r, z = Math.max(lead, trail) + r;
+    c.save(); c.shadowColor = 'rgba(0,0,0,0.18)'; c.shadowBlur = 16 * S.k; c.shadowOffsetY = 4 * S.k;
+    roundRect(c, a, b.cy - r, z - a, 2 * r, r); c.fillStyle = PAPER; c.fill(); c.restore();
+  };
+  // tabs and the chart's tab row: the indicator's edges ride different springs
+  function tabsRow(c, x0, x1, cy, h, t, keysIdx, size) {
+    const seg = (x1 - x0) / 3, left = track(t, keysIdx.map(([tt, i]) => [tt, x0 + i * seg]), 170, 16), right = track(t, keysIdx.map(([tt, i]) => [tt, x0 + (i + 1) * seg]), 440, 24);
+    roundRect(c, left, cy - h / 2, right - left, h, h / 2); c.fillStyle = INK; c.fill();
+    ['Day', 'Week', 'Month'].forEach((s, i) => {
+      const mx = x0 + (i + 0.5) * seg, inside = mx > left && mx < right;
+      textAt(c, s, mx, cy + 1, F(600), size, inside ? LIGHT : GREY, 'center');
+    });
+  }
+  C.tabs = (c, b, age, t) => tabsRow(c, b.x + b.h * 0.07, b.x + b.w - b.h * 0.07, b.cy, b.h * 0.84, t, [[6.27, 0], [6.8, 1], [7.07, 2]], b.h * 0.28);
+  // the chart: signals read, counting up as the line draws; a tooltip follows the cursor; Week reshapes it
+  // smooth curves with a few long waves, as the reference's
+  const NPT = 13;
+  const MONTH = Array.from({ length: NPT }, (_, i) => 0.14 + 0.66 * (i / (NPT - 1)) ** 1.3 + 0.07 * Math.sin(i * 1.3 + 0.5));
+  const WEEK = Array.from({ length: NPT }, (_, i) => 0.44 + 0.09 * Math.sin(i * 1.25 + 0.3) + 0.03 * Math.sin(i * 2.2));
+  // y of the smooth curve through ys (evenly spaced) in segment i at q ∈ [0, 1]
+  function curveAt(ys, i, q) {
+    const p0 = ys[Math.max(0, i - 1)], p1 = ys[i], p2 = ys[i + 1], p3 = ys[Math.min(ys.length - 1, i + 2)];
+    const c1 = p1 + (p2 - p0) / 6, c2 = p2 - (p3 - p1) / 6;
+    return (1 - q) ** 3 * p1 + 3 * (1 - q) ** 2 * q * c1 + 3 * (1 - q) * q ** 2 * c2 + q ** 3 * p2;
+  }
+  // the chart line's y at screen x, for the settled chart (the cursor follows it during the tooltip scrub)
+  function chartLineY(x) {
+    const bw = S.boxes[8][1], bh = S.boxes[8][2], bx = CX - bw / 2, by = CY - bh / 2, pad = bw * 0.072;
+    const x0 = bx + pad, x1 = bx + bw - pad, y0 = by + bh * 0.42, y1 = by + bh * 0.86;
+    const f = clamp((x - x0) / (x1 - x0)), i = Math.min(NPT - 2, Math.floor(f * (NPT - 1))), q = f * (NPT - 1) - i;
+    return curveAt(MONTH.map((v) => lerp(y1, y0, v)), i, q);
+  }
+  const countAt = (t) => t < 9.17 ? Math.round(1284 * easeOutExpo(clamp((t - 7.47) / 0.53))) : Math.round(lerp(1284, 312, easeOutExpo(clamp((t - 9.17) / 0.4))));
+  C.chart = (c, b, age, t) => {
+    const pad = b.w * 0.072;
+    tabsRow(c, b.x + b.w * 0.2, b.x + b.w * 0.82, b.y + b.h * 0.125, b.h * 0.098, t, [[7.27, 2], [9.17, 1]], b.h * 0.034);
+    textAt(c, countAt(t).toLocaleString('en-US'), b.x + pad, b.y + b.h * 0.265, F(700), b.h * 0.125, INK);
+    textAt(c, V.caption, b.x + pad, b.y + b.h * 0.345, F(400), b.h * 0.034, GREY);
+    const x0 = b.x + pad, x1 = b.x + b.w - pad, y0 = b.y + b.h * 0.42, y1 = b.y + b.h * 0.86;
+    c.strokeStyle = '#ECE4D6'; c.lineWidth = 2; for (const f of [0, 0.5, 1]) { c.beginPath(); c.moveTo(x0, lerp(y0, y1, f)); c.lineTo(x1, lerp(y0, y1, f)); c.stroke(); }
+    const m = t < 9.17 ? 0 : spring(t - 9.17, 150, 20);
+    const pts = MONTH.map((v, i) => [lerp(x0, x1, i / (NPT - 1)), lerp(y1, y0, lerp(v, WEEK[i], m))]);
+    const reveal = easeOutExpo(clamp((t - 7.53) / 0.5));
+    c.save(); c.beginPath(); c.rect(x0 - 4, y0 - 40, (x1 - x0) * reveal + 8, y1 - y0 + 60); c.clip();
+    const curve = () => { c.moveTo(...pts[0]); for (let i = 0; i < pts.length - 1; i++) { const P = (k) => pts[Math.max(0, Math.min(pts.length - 1, k))]; const [x1c, y1c] = P(i), [x2c, y2c] = P(i + 1), [x0c, y0c] = P(i - 1), [x3c, y3c] = P(i + 2); c.bezierCurveTo(x1c + (x2c - x0c) / 6, y1c + (y2c - y0c) / 6, x2c - (x3c - x1c) / 6, y2c - (y3c - y1c) / 6, x2c, y2c); } };
+    c.beginPath(); curve(); c.lineTo(x1, y1); c.lineTo(x0, y1); c.closePath();
+    const area = c.createLinearGradient(0, y0, 0, y1); area.addColorStop(0, 'rgba(247,204,51,0.32)'); area.addColorStop(1, 'rgba(247,204,51,0)'); c.fillStyle = area; c.fill(); // the yuzu colour under the line
+    c.beginPath(); curve(); c.strokeStyle = INK; c.lineWidth = 5; c.lineJoin = 'round'; c.stroke();
+    c.restore();
+    // tooltip
+    const tip = clamp((t - 7.82) / 0.08) * (1 - clamp((t - 8.82) / 0.1));
+    if (tip > 0) {
+      const cxp = clamp(cursorAt(t)[0], x0, x1), f = (cxp - x0) / (x1 - x0), i = Math.min(NPT - 2, Math.floor(f * (NPT - 1))), q = f * (NPT - 1) - i;
+      const vy = curveAt(pts.map((pt) => pt[1]), i, q), val = Math.round(1284 * lerp(MONTH[i], MONTH[i + 1], q) * 0.9);
+      c.globalAlpha = tip;
+      c.setLineDash([3, 7]); c.lineCap = 'round'; c.strokeStyle = FAINT; c.lineWidth = 3; c.beginPath(); c.moveTo(cxp, y0); c.lineTo(cxp, y1); c.stroke(); c.setLineDash([]);
+      c.beginPath(); c.arc(cxp, vy, 11, 0, Math.PI * 2); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(cxp, vy, 5, 0, Math.PI * 2); c.fillStyle = PAPER; c.fill();
+      const label = val.toLocaleString('en-US'), fw = Math.max(150, measure(c, F(600)(b.h * 0.034), label) + 48);
+      roundRect(c, cxp - fw / 2, vy - 112, fw, 70, 18); c.fillStyle = INK; c.fill();
+      textAt(c, label, cxp, vy - 76, F(600), b.h * 0.034, LIGHT, 'center');
+      c.globalAlpha = 1;
+    }
+  };
+  // search and the command palette: find a flavour; type "box"; select; enter
+  const glass = (c, x, y, s, col) => { c.strokeStyle = col; c.lineWidth = s * 0.16; c.beginPath(); c.arc(x - s * 0.1, y - s * 0.1, s * 0.34, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.moveTo(x + s * 0.15, y + s * 0.15); c.lineTo(x + s * 0.42, y + s * 0.42); c.stroke(); };
+  C.search = (c, b) => {
+    glass(c, b.x + b.h * 0.32, b.cy, b.h * 0.17, FAINT);
+    textAt(c, V.search, b.x + b.h * 0.52, b.cy + 1, F(400), b.h * 0.2, FAINT);
+    textAt(c, '⌘K', b.x + b.w - b.h * 0.28, b.cy + 1, F(500), b.h * 0.15, FAINT, 'right');
+  };
+  const ITEMS = [['Add Yuzu & Fennel', '⌘N', 'plus'], ['Download receipt', '⌘E', 'down'], ['Skip a box', '', 'skip'], ['Track order #10482', '', 'pin'], ['Build your box', '↵', 'box']];
+  const MATCH = [2, 4];
+  const TYPED = [[10.55, 'b'], [10.68, 'bo'], [10.8, 'box']];
+  const icon = (c, kind, x, y, s, col) => {
+    c.strokeStyle = col; c.fillStyle = col; c.lineWidth = s * 0.1; c.lineCap = 'round'; c.lineJoin = 'round';
+    roundRect(c, x - s / 2, y - s / 2, s, s, s * 0.22); c.stroke();
+    const k = s * 0.22; c.beginPath();
+    if (kind === 'plus') { c.moveTo(x - k, y); c.lineTo(x + k, y); c.moveTo(x, y - k); c.lineTo(x, y + k); }
+    if (kind === 'down') { c.moveTo(x, y - k); c.lineTo(x, y + k * 0.8); c.moveTo(x - k * 0.8, y + k * 0.1); c.lineTo(x, y + k * 0.9); c.lineTo(x + k * 0.8, y + k * 0.1); }
+    if (kind === 'skip') { c.moveTo(x - k, y - k * 0.8); c.lineTo(x - k * 0.1, y); c.lineTo(x - k, y + k * 0.8); c.moveTo(x, y - k * 0.8); c.lineTo(x + k * 0.9, y); c.lineTo(x, y + k * 0.8); }
+    if (kind === 'pin') { c.moveTo(x, y + k * 1.1); c.quadraticCurveTo(x - k * 1.1, y - k * 0.1, x - k * 0.8, y - k * 0.6); c.arc(x, y - k * 0.4, k * 0.82, Math.PI * 1.05, Math.PI * 1.95); c.quadraticCurveTo(x + k * 1.1, y - k * 0.1, x, y + k * 1.1); }
+    if (kind === 'box') { c.rect(x - k, y - k * 0.5, 2 * k, k * 1.5); c.moveTo(x - k * 1.15, y - k * 0.5); c.lineTo(x - k * 0.75, y - k * 1.05); c.lineTo(x + k * 0.75, y - k * 1.05); c.lineTo(x + k * 1.15, y - k * 0.5); }
+    c.stroke();
+  };
+  C.palette = (c, b, age, t) => {
+    const f = t < 10.6 ? 0 : spring(t - 10.6, 230, 24); // 0 = full list, 1 = filtered
+    const inputY = b.y + lerp(79, 94, f), divY = b.y + lerp(162, 198, f), fs = lerp(38, 46, f);
+    const typed = (TYPED.filter(([tt]) => t >= tt).pop() || [0, ''])[1];
+    glass(c, b.x + 58, inputY, lerp(34, 40, f), typed ? INK : '#9a9a98');
+    const tw = textAt(c, typed || V.search, b.x + 100, inputY + 2, F(typed ? 500 : 400), fs, typed ? INK : FAINT);
+    if (Math.floor(t * 2.2) % 2 === 0 && t < 11.53) { c.fillStyle = INK; c.fillRect(b.x + 100 + (typed ? tw + 4 : 0), inputY - fs * 0.62, 3, fs * 1.24); }
+    c.fillStyle = '#ececea'; c.fillRect(b.x, divY, b.w, 2);
+    // rows: before filtering, five at 266 + 112k; after, the two matches at 317 and 454
+    const hl = t < 11.3 ? 0 : spring(t - 11.3, 300, 28), sel = clamp((t - 11.53) / 0.06);
+    const rowY = (i) => { const k = MATCH.indexOf(i); return lerp(266 + i * 112, k < 0 ? 266 + i * 112 : [317, 454][k], f); };
+    // highlight: a light bar on the first match, sliding to the second, which then turns black
+    if (f > 0.02) {
+      const hy = b.y + lerp(rowY(2), rowY(4), hl), hh = 122;
+      const hi = [243, 236, 223], ink = rgbOf(INK);
+      roundRect(c, b.x + 22, hy - hh / 2, b.w - 44, hh, 22); c.fillStyle = `rgb(${hi.map((v, j) => Math.round(lerp(v, ink[j], sel))).join(',')})`; c.globalAlpha = clamp(f * 1.6); c.fill(); c.globalAlpha = 1;
+    }
+    ITEMS.forEach(([label, key, kind], i) => {
+      const gone = MATCH.includes(i) ? 0 : f;
+      if (gone > 0.98) return;
+      const y = b.y + rowY(i), on = i === 4 && sel > 0.5, col = on ? LIGHT : INK;
+      c.globalAlpha = 1 - gone;
+      icon(c, kind, b.x + 62, y, lerp(34, 40, f), on ? LIGHT : GREY);
+      textAt(c, label, b.x + 104, y + 2, F(500), lerp(36, 44, f), col);
+      if (key) textAt(c, key, b.x + b.w - 50, y + 2, F(500), lerp(28, 30, f), on ? DIM : FAINT, 'right');
+      c.globalAlpha = 1;
+    });
+  };
+  C.toast = (c, b, age) => {
+    const r = b.h * 0.16, x = b.x + b.h * 0.5, p = easeOutExpo(clamp((age - 0.18) / 0.22));
+    c.beginPath(); c.arc(x, b.cy, r, 0, Math.PI * 2); c.fillStyle = YUZU; c.fill();
+    c.strokeStyle = INK; c.lineWidth = r * 0.28; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(x - r * 0.45, b.cy); c.lineTo(x - r * 0.45 + r * 0.3 * Math.min(1, p * 2), b.cy + r * 0.3 * Math.min(1, p * 2));
+    if (p > 0.5) c.lineTo(x - r * 0.15 + r * 0.62 * (p - 0.5) * 2, b.cy + r * 0.3 - r * 0.72 * (p - 0.5) * 2);
+    c.stroke();
+    textAt(c, V.toast, x + r + b.h * 0.2, b.cy + 2, F(500), b.h * 0.25, LIGHT);
+  };
+  // which content is on, and when: [start, content]
+  const CONTENT = [[0, C.button], [0.55, C.loader], [0.93, C.check], [1.27, C.island], [1.8, C.player], [3.72, C.slider], [5.27, C.toggle], [6.27, C.tabs], [7.27, C.chart], [9.73, C.search], [10.07, C.palette], [11.77, C.toast], [12.57, C.button]];
+
+  // ---------- drawing ----------
+  function drawCursor(x, y, s) {
+    g.save(); g.translate(x, y); g.scale(s, s);
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 46); g.lineTo(11, 35); g.lineTo(19, 53); g.lineTo(27, 49.5); g.lineTo(19, 32); g.lineTo(34, 32); g.closePath();
+    g.shadowColor = 'rgba(0,0,0,0.3)'; g.shadowBlur = 10 * S.k; g.shadowOffsetY = 4 * S.k;
+    g.lineJoin = 'round'; g.lineWidth = 5; g.strokeStyle = PAPER; g.stroke(); g.shadowColor = 'transparent';
+    g.fillStyle = INK; g.fill(); g.restore();
+  }
+  function seek(t, values) {
+    V = { ...DEFAULTS, ...values };
+    S = layoutFor(V.size);
+    const [fw, fh] = S.size, k = S.k, stage = (c) => c.setTransform(k, 0, 0, k, S.ox, S.oy);
+    if (canvas.width !== fw || canvas.height !== fh) { canvas.width = layer.width = fw; canvas.height = layer.height = fh; }
+    g.reset();
+    t = clamp(t, 0, DURATION - 1e-6);
+    // canvas: Fennick's paper, a shade deeper, a little lighter in the middle
+    g.fillStyle = '#EFE7DA'; g.fillRect(0, 0, fw, fh);
+    const bg = g.createRadialGradient(fw / 2, fh / 2 - (CY - CY * 0.9) * k, 0, fw / 2, fh / 2, 1000 * k); bg.addColorStop(0, 'rgba(255,255,255,0.35)'); bg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = bg; g.fillRect(0, 0, fw, fh);
+    const b = box(t), dark = 1 - b.lum, ink = rgbOf(INK), paper = rgbOf(PAPER), fill = ink.map((x, j) => Math.round(lerp(x, paper[j], b.lum)));
+    // the container, with a soft shadow
+    g.save(); stage(g); g.shadowColor = `rgba(0,0,0,${lerp(0.1, 0.24, dark)})`; g.shadowBlur = 70 * k; g.shadowOffsetY = 26 * k;
+    roundRect(g, b.x, b.y, b.w, b.h, b.r); g.fillStyle = `rgb(${fill.join(',')})`; g.fill(); g.restore();
+    // content: the outgoing blurs out as the morph starts, the incoming blurs in
+    for (let i = 0; i < CONTENT.length; i++) {
+      const [start, draw] = CONTENT[i], next = i + 1 < CONTENT.length ? CONTENT[i + 1][0] : Infinity;
+      const inP = i === 0 && t < 0.2 ? 1 : clamp((t - start - 0.05) / 0.14), outP = clamp((t - next) / 0.08);
+      const a = Math.min(inP, 1 - outP);
+      if (a <= 0.01) continue;
+      L.reset(); stage(L); draw(L, b, t - start, t);
+      g.save(); stage(g); roundRect(g, b.x, b.y, b.w, b.h, b.r); g.clip(); g.setTransform(1, 0, 0, 1, 0, 0);
+      const blur = (1 - a) * 14 * k; if (blur > 0.4) g.filter = `blur(${blur}px)`;
+      g.globalAlpha = a; g.drawImage(layer, 0, 0); g.restore();
+    }
+    const [x, y] = cursorAt(t);
+    stage(g); drawCursor(x, y, pressed(t) ? 0.86 : 1);
+    return canvas;
+  }
+  async function prepare() {
+    await loadFont('DM Sans', 'assets/fonts/dm-sans-variable.ttf', { weight: '100 1000' });
+    if (!A.can) A.can = await loadImage('assets/art/can-yuzu.png');
+    await document.fonts.ready;
+  }
+  // sound, each on its visual onset: a tap on every press, a soft pop as each morph starts, a tick
+  // per typed letter, a quiet swish on the three big growths (with their travel). No riser, no accent.
+  function cues() {
+    const out = CLICKS.map((t) => ({ t, type: 'tap', gain: 0.65 }));
+    for (const [t0, t1] of DRAGS) out.push({ t: t0, type: 'tap', gain: 0.6 }, { t: t1, type: 'tap', gain: 0.45 });
+    for (const b of BOX.slice(1)) if (![1.8, 7.27, 10.07].includes(b[0])) out.push({ t: b[0], type: 'pop', gain: 0.4 });
+    for (const [t] of TYPED) out.push({ t, type: 'tick', gain: 0.55 });
+    for (const t of [1.8, 7.27, 10.07]) out.push({ t, type: 'swish', gain: 0.32, motion: { kind: 'container', travel: 0.4 } });
+    return out.sort((a, b) => a.t - b.t);
+  }
+  // the bed: 120 BPM, 7 bars, light: a kick on every beat once the player opens, pads throughout
+  const music = {
+    bpm: 120, duration: DURATION, root: 50, // D3, upward-voiced major chords
+    chords: [[0, 4, 7], [7, 11, 14], [9, 12, 16], [5, 9, 12]],
+    sections: [
+      { from: 0, to: 1, pad: 0.75, hats: 0.35 },
+      { from: 1, to: 6, kick: 0.7, hats: 0.6, bass: 0.6, pad: 0.6 },
+      { from: 6, to: 7, pad: 0.75, hats: 0.35 },
+    ],
+  };
+  // the states, for a player's timeline: [start, name]
+  const STATES = [[0, 'Button'], [0.55, 'Loader'], [0.93, 'Check'], [1.27, 'Island'], [1.8, 'Card'], [3.72, 'Slider'], [5.27, 'Toggle'], [6.27, 'Tabs'], [7.27, 'Chart'], [9.73, 'Search'], [10.07, 'Palette'], [11.77, 'Toast'], [12.57, 'Button']];
+  window.template = { fps: FPS, duration: DURATION, sizes: Object.fromEntries(Object.entries(SHAPES).map(([n, sh]) => [n, sh.size])), width: W, height: H, defaults: () => ({ size: '1:1', ...DEFAULTS }), fields: FIELDS, states: STATES, prepare, seek: (t, values) => seek(t, values), cues, music,
+    // one moment inside every state, for scripts/compare.mjs
+    keyTimes: [0.33, 0.73, 1.1, 1.67, 2.2, 3.33, 4.17, 5.0, 5.67, 6.0, 6.67, 7.07, 7.93, 8.33, 9.5, 9.93, 10.4, 11.0, 11.67, 12.17] };
+  const q = new URLSearchParams(location.search);
+  if (window.parent === window && !q.has('render')) prepare().then(() => { const t0 = performance.now(); const size = q.get('size') || '1:1'; const loop = () => { seek(((performance.now() - t0) / 1000) % DURATION, { size }); requestAnimationFrame(loop); }; loop(); });
+})();
+</script>
