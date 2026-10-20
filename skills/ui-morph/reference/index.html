@@ -426,7 +426,7 @@
     return out.sort((a, b) => a.t - b.t);
   }
   // the bed: 120 BPM, 7 bars, light: a kick on every beat once the player opens, pads throughout
-  const music = {
+  const music = { style: 'organic', // the played sound (plucked strings, marimba, shaker) for a plants or botanicals brand
     bpm: 120, duration: DURATION, root: 50, // D3, upward-voiced major chords
     chords: [[0, 4, 7], [7, 11, 14], [9, 12, 16], [5, 9, 12]],
     sections: [
