@@ -92,7 +92,8 @@ adds or removes whole bars (2 s) and keeps the holds; the song still lands on th
 
 - An arrow 34 × 53 px at 1440: ink, a 5 px paper outline, a soft shadow (black 0.3, blur 10, 4 px down).
 - It rests in a corner of the frame (1268, 1150) when it isn't working, glides to each target in 0.5 s
-  (`1 - (1 - p)^3.2`: starts straight off, lands soft), rests 0.5 s, presses, and leaves for its corner after the last
+  (`GLIDE`, cubic-bezier(0.45, 0, 0.15, 1): eases in from rest, then a long soft landing; never off at full speed),
+  rests 0.5 s, presses, and leaves for its corner after the last
   click. Its tip sits on the target's lower part, beside the words, never over them.
 - Each point names the box row it works on (`CUR`), so it lands on the piece wherever that piece is.
 

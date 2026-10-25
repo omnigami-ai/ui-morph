@@ -25,7 +25,8 @@ code.
 3. **Springs and hand-offs:** each morph overshoots a little and settles in one move; content blurs out and in under
    it; nothing slides linearly or stops dead.
 4. **Presses and the cursor:** every click visibly pressed, on its onset, by the piece and the cursor; a hover on what
-   the cursor rests on; the cursor glides, rests, presses, and never covers what it points at.
+   the cursor rests on; the cursor glides, rests, presses, and never covers what it points at. Every glide eases in
+   from rest as well as landing soft (never an ease-out alone): check the first frames of each glide on a strip.
 5. **Type and fit:** labels centred on their capitals; every word fits its piece with room, in every state; on the
    phone sheet (360 px wide) every word reads; nothing under 28 px at 1440.
 6. **Craft:** the product's ink, paper and one accent where the product uses it; icons in the product's stroke;
