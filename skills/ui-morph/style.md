@@ -1,128 +1,161 @@
 # UI morph: style
 
-Style after [@twoclipping's UI-morph video](https://x.com/twoclipping/status/2103273003555402193),
-made in code with Claude Opus 5.5 from a prompt he published openly. The
-reference film here is our own, built and measured against it (`spec.md`).
+Style inspired by [@twoclipping's UI-morph video](https://x.com/twoclipping/status/2103273003555402193): one container
+that never cuts, on springs, driven by a cursor at 120 BPM. This skill tells that grammar as one real job in the
+product. Every number below is measured from `reference/index.html` (Fennick, 1440 × 1440, 60 fps, 16 s).
 
 ## The grammar
 
-- **One shape, never cut.** Every state is the same container changing size, radius and colour. There are no cuts and no second object.
-- **A cursor drives every change,** with real clicks and drags. Nothing changes by itself except loaders, counters and the typing.
-- **Beat-led rhythm:** 120 BPM, a beat every 0.5 s, 28 beats, 7 bars, 14 s. Place actions and transition accents on the rhythm; allow readable result holds. The film loops: the last frame is the first.
-- **Light canvas** a shade deeper than the product's paper (the reference: Fennick's `#EFE7DA`), a little lighter in the middle. UI in the product's ink and paper (Fennick: `#1D1A16`, `#FBF6EE`), with the product's brand colour as its one accent, where the product itself uses it: the primary button, the active tab or selection, a chart line, a check. One UI face (Geist, or the product's own when licensed).
-- **Content swaps behind a short blur:** the outgoing content blurs out over 0.08 s as the morph starts; the incoming blurs in over 0.14 s from 0.05 s after.
+- **One job, one shape.** One real task in the product, done once, in its own order, ending on its real result. The
+  container is every piece of it in turn: a button, the card that button opens, the control on that card, the product
+  working, done, its result. No cuts, no second shape, nothing changes that the cursor didn't cause (except the loader,
+  the check and the result arriving).
+- **Each morph is what the click before it opens.** The button you press becomes the card it opens; the card's button
+  becomes the control it opens; the choice becomes the saving. A piece never appears that the last click wouldn't have
+  shown in the product.
+- **The product's own pieces,** drawn from captures of each state (`reference/capture/`): its words, icons, colours,
+  radii, weights and order. The container's two ends are the product's ink and paper; its brand colour is the one
+  accent, where the product uses it (Fennick: yuzu, on the result's check).
+- **A caption per step,** above the container, in the product's headline face: what the product does for the viewer
+  at this step ("Skip the next box.", "Pick a new date."), never the sample data. The sample data lives inside the
+  pieces (the card's date, the chooser's dates, the toast).
+- **Breathing room.** Each caption lands and is read before the cursor sets off; the cursor rests on its target before
+  it presses; the result holds long enough to read twice; the brand holds to the loop.
+- **Loops pixel for pixel.** The last frame is the first: the brand, the button, the cursor in its corner.
 
-## Choose scenes for the product
+## The beat grid (120 BPM: a beat 0.5 s, a bar 2 s; 16 s = 8 bars)
 
-Keep the motion grammar above. Choose actual product actions and visible
-results first. The following table documents the reference, not required
-states. Reuse its measured transitions where they fit; replace irrelevant
-controls or scenes while preserving continuous motion, readable holds and
-120 BPM rhythm. A held scene can have small responsive motion without
-adding another feature or repeatedly toggling a meaningless setting.
-
-## Reference states (at 1440 px; t = when the morph starts)
-
-| t (s) | State | Box | What it can become for another product |
+| t (s) | Beat | What | Hold |
 |---|---|---|---|
-| 0.00 | button | 641 × 205 pill, black | the main call to action |
-| 0.55 / 0.93 | loader, then a check | 221–230 circle | the action working, then done |
-| 1.27 | island | 863 × 219 pill | the product's tile and something live |
-| 1.80 | card | 996 × 633, r 67 | the core object (a track, a doc, a watch, an order), with a bar to scrub and three controls (below) |
-| 3.72 | slider | 1075 × 185 pill | one continuous setting; dragged down, then past the end so the pill stretches |
-| 5.27 | toggle | 490 × 274 pill | one on/off setting, flipped three times on the beat |
-| 6.27 | tabs | 1191 × 169 pill, white | three periods or views |
-| 7.27 | chart | 1099 × 843, r 44, white | a number that counts up, a line that draws, a tooltip scrubbed along it; the second tab reshapes it |
-| 9.73 | search | 871 × 210, r 59 | the product's search or ask box, with ⌘K |
-| 10.07 | palette | 1039 × 813, r 35 | five real commands |
-| 10.60 | filtered | 1243 × 571, r 41 | three typed letters filter to two; the second is chosen |
-| 11.77 | toast | 965 × 180 pill, black | the closing line, with a check |
-| 12.57 | button | as the first | back to the start: the loop |
+| 0.00 | brand | wordmark above the button; cursor in its corner | 1 s |
+| 1.00 | question | caption 1 (the viewer's need: "Plans changed?") | read 1 s, then the cursor sets off (2.0), arrives (2.5), rests 0.5 s |
+| 3.00 | click 1 | the button opens the product's card | |
+| 3.08 | step 1 | caption 2 with the card | read ~2 s (3.6–5.5); sets off 5.5, arrives 6.0, rests 0.5 s |
+| 6.50 | click 2 | the card's button opens its control | |
+| 6.58 | step 2 | caption 3 with the control | read ~1 s (7.1–8.0); sets off 8.0, arrives 8.5, rests 0.5 s |
+| 9.00 | click 3 | the choice is made in the control | the choice shows 0.6 s; the cursor leaves for its corner (9.25–10.15) |
+| 9.62 | working | the control collapses into the loader; the caption leaves | none (the product's own working is never held) |
+| 10.00 | done | the check draws; **the song lands its hit here** (`--land 10`) | |
+| 10.40 | result | the product's own result message (the toast) | 3.1 s |
+| 11.50 | promise | caption 4: the product's promise in its own words | 2 s |
+| 13.50 | brand | the toast becomes the button again; the wordmark | 2.5 s to the loop |
 
-## Adapting scenes and their interactions
+A morph starts 0.08 s (`LAG`) after the click that opens it. Clicks and landings sit on beats (3.0, 6.5, 9.0, 10.0);
+the product's working (9.62) and its result (10.4) follow the product, not the grid. A job with more or fewer steps
+adds or removes whole bars (2 s) and keeps the holds; the song still lands on the check.
 
-For each replacement, update these together:
+## The container (at 1440 px)
 
-- container keys (`BOX`) and drawing functions (`CONTENT`), with their local times;
-- cursor targets, easing/drag intervals (`CUR`, `LINEAR`, `DRAGS`) and clicks;
-- scene-specific hooks: `cursorAt` follows `chartLineY` at 7.85–8.8 s;
-  `box` applies slider stretch at 4.0–5.27 s; `lumKeys` includes `TOGGLE`;
-- tabs, typing, counters and other content schedules;
-- sound cues and music accents, so removed actions leave no ghost clicks;
-- editable fields and defaults, the saved words in `values.json`, scene names
-  (`STATES`) and review times (`keyTimes`);
-- each shape's layout (`SHAPES`): a new or resized box that crowds the wide or
-  tall frame gets its own `[w, h]` there, and every new `CUR` point names the
-  `BOX` row it works on.
+| Row | State | Box | Radius | Fill (lum: 0 ink … 1 paper) | Spring |
+|---|---|---|---|---|---|
+| 0 | button | 540 × 205 | pill | ink (0.03) | 280/19 |
+| 1 | card | 1040 × 560 | 64 | ink | 280/19 |
+| 2 | control (the date chooser) | 1191 × 169 | pill | paper (1) | 280/19 |
+| 3 | loader | 221 circle | pill | ink | 280/27 (a big collapse: firmer, stays a circle) |
+| 4 | check | 230 circle | pill | ink | 280/19 |
+| 5 | toast | its words' width × 180 | pill | ink | 280/25 (a big growth: about 5% over) |
+| 6 | button | as row 0 | pill | ink | 280/19 |
 
-Use the reference's spring constants and blur hand-offs as the starting
-point. Container geometry can change for a different real screen. Keep
-breathing room and the type hierarchy; do not shrink words to fit. Check
-fast transitions at their new times. Keep the loop's first and last frame
-matching, including cursor and any saved words.
+- **Springs:** `kit.spring`, stiffness 280, damping 19 (an overshoot of about a tenth of the change, settled in about
+  0.4 s). Width and height ride it **in log space** (`logTrack`): a change overshoots by a share of itself, so a wide
+  pill collapsing to a circle never passes through a tall pill on the way. Radius, centre and fill ride it linearly;
+  the fill (lum) on 800/57, which doesn't overshoot. A row can set its own spring (rows 3 and 5).
+- **The toast's width** comes from its words: `max(720, 155 + text width + 86)` at DM Sans 500 45 px.
+- **Layout:** the caption, a 104 px gap and the container are centred as a group (`GROUP` 712, caption height 53), so
+  the container keeps one centre (y 791) and each caption sits 104 px above its own state's top edge.
+- **Shadow:** black at 0.10 (paper) to 0.24 (ink), blur 70, 26 px down.
+- **Ground:** the product's paper a shade deeper (Fennick `#EFE7DA`), a little lighter in the middle (white at 0.35
+  fading over 1000 px, centred 72 px above the middle).
 
-For example, a large panel can expand into a real search result instead of
-a chart if that is what the product does. Rebuild its action, cursor and
-sound from the evidenced interface; changing the chart label is not enough.
+## Hand-offs
 
-## When the product has the reference card's controls
+- **Content:** the outgoing piece blurs and fades out over 0.08 s as the morph starts; the incoming comes in from a
+  14 px blur over 0.14 s, from 0.05 s after (the toast's words wait 0.13 s, until the pill is nearly wide enough, so
+  they never come into focus clipped). Content is clipped to the live container.
+- **Captions:** each word rises 22 px and comes into focus from a 10 px blur over 0.36 s, from 0.14 s after its step,
+  0.05 s after the word before it (ease out). A caption leaves all at once over 0.14 s (up 10 px, blurring 8 px) as the
+  next arrives, keeping its gap above the container's live top edge, so a growing card pushes it up instead of
+  running over it. At 80 px, -2% tracking, shrunk to fit 1240 px wide. The wordmark (420 px wide, its letters' middle
+  on the caption line) is the first and last caption.
 
-The reference has three controls under a scrub bar; its middle control is
-clicked twice (2.33 and 2.7 s). Retain this only when those interactions
-exist in the product. Otherwise replace the layout and cursor action.
-For retained controls:
+## Presses and hovers
 
-- **The middle one** is a two-state action: pause / resume, follow / unfollow, lock / unlock, live / paused, star / unstar.
-- **The side ones** are its neighbours (previous / next item) or two related actions (refresh, share, export).
-- **Media controls** (previous, play / pause, next) only when the product plays something or has a live feed to pause, as the reference's box delivery does (pause and resume the box).
-- When the middle pair isn't pause and play, swap its two icons on each click with a quick spring (the old one shrinks out, the new one grows in), never a crossfade.
+- **Every click has a press,** on one curve (`env`): down over 0.05 s from 0.03 s before the click, held, back over
+  0.16 s from 0.07 s after. What's pressed sinks 4%. The container button lightens (+0.06 lum); a ghost button on the
+  card fills (paper at 0.10); a segment of the control washes darker (ink at 0.06).
+- **The cursor presses too,** on the same curve: it shrinks to 0.86 and comes back, never in one frame.
+- **Hover:** what the cursor rests on answers over 0.15 s from 0.05 s before it arrives: the button lightens (+0.025
+  lum), the ghost button washes (paper at 0.08), the segment washes (ink at 0.05). It clears as the click's morph
+  begins.
+
+## The cursor
+
+- An arrow 34 × 53 px at 1440: ink, a 5 px paper outline, a soft shadow (black 0.3, blur 10, 4 px down).
+- It rests in a corner of the frame (1268, 1150) when it isn't working, glides to each target in 0.5 s
+  (`1 - (1 - p)^3.2`: starts straight off, lands soft), rests 0.5 s, presses, and leaves for its corner after the last
+  click. Its tip sits on the target's lower part, beside the words, never over them.
+- Each point names the box row it works on (`CUR`), so it lands on the piece wherever that piece is.
+
+## The pieces (Fennick's, as an example of the measure)
+
+- **Card:** a 250 px sand tile (radius 48, 60 px in) with the product's photo at 82% of its height; a text column
+  48 px right of it: eyebrow DM Sans 500 38 (dim), title 600 64 (paper), detail 400 38 (dim), centred on lines 48, 124
+  and 200 px below the tile's top. Two buttons along the bottom (112 tall, 60 px in, 24 apart): the ghost one outlined
+  3 px in paper, the filled one paper with ink words; labels 600 38 with the product's 40 px icons (stroke 1.75 on 24),
+  18 px apart.
+- **Control (segmented):** inset 13 px, three equal segments, labels 600 47. The ink indicator moves on two springs:
+  the leading edge stiff (440/24), the trailing soft (170/16), so it stretches as it travels and settles (for a move
+  to the left, swap them). The skipped date is struck through (5 px grey line over 0.2 s from 0.1 s after the click,
+  revealed as the indicator leaves it) and greys as the product greys a struck date.
+- **Loader:** an arc at 0.2 of the circle's size, 0.05 thick, turning 9.5 rad/s, its span breathing (π × 1.15–1.5).
+- **Check:** two strokes (0.075 of the circle thick) drawing over 0.2 s (expo out) from 0.04 s.
+- **Toast:** the brand colour's disc (radius 29, 90 px in) with an ink tick drawing over 0.22 s from 0.18 s; the
+  result's words in DM Sans 500 45, 36 px after the disc.
 
 ## Type
 
-The product's UI font throughout (the reference: DM Sans), with tabular figures for small numbers. Sizes in px at 1440, measured against the original. Use the same hierarchy for equivalent content; cut words before shrinking anything. New scenes use comparable sizes and the floor below.
+The product's UI face for its pieces (the reference: DM Sans); its headline face for the captions (the reference:
+Bricolage Grotesque 800 at 84% width, as the shop sets its headlines). Centre every label on its capitals
+(`kit.centreText`), never `textBaseline = 'middle'`.
 
 | Where | Size | Weight |
 |---|---|---|
+| caption | 80 (shrinks to fit 1240 px) | the headline face, 800 |
 | button label | 55 | 600 |
-| card title / subtitle | 44 / 32 | 600 / 400 |
-| card figures under the bar | 28 (mono) | 400 |
-| tabs | 47 | 600 |
-| chart number / tabs / caption / tooltip | 105 / 29 / 29 / 29 | 700 / 600 / 400 / 600 |
-| search / ⌘K | 42 / 32 | 400 / 500 |
-| palette input / rows / shortcuts | 38–46 / 36–44 / 28–30 | 400–500 / 500 / 500 |
+| card eyebrow / title / detail | 38 / 64 / 38 | 500 / 600 / 400 |
+| card buttons | 38 | 600 |
+| control labels | 47 | 600 |
 | toast | 45 | 500 |
 
-Nothing under 28 px: that is the original's smallest text, and about the limit on a phone.
+Nothing under 28 px at 1440 (about the limit on a phone); the reference's smallest is 38. Cut words before shrinking
+anything.
 
-## Motion
+## Shape
 
-- **Container:** closed-form springs, stiffness 280, damping 19 (a visible overshoot of a few percent on every morph). Size, radius, position and colour all ride it.
-- **Cursor:** arrives on the beat; every move eases out fast and lands soft, except drags, which move steadily. Pressed, it shrinks to 0.86.
-- **Two-edge motion:** the toggle knob and the tab indicator have a stiff leading edge (560/26, 440/24) and a soft trailing edge (190/17, 170/16), so they stretch as they travel and settle.
-- **Stretch:** dragged past its end, the slider grows by 0.62 of the overshoot, left edge fixed; on release it springs back (320/14).
-- **Counters** ease out over 0.5 s; the chart line draws left to right over 0.5 s.
-- **Motion blur:** 4 sub-frames across half a frame (`--blur 4`).
+Square only: 1440 × 1440 (`SHAPES` has one entry, `1:1`). The reference lays out no wide or tall frame.
 
 ## Sound
 
-Retiming or replacing a scene must retime or replace its sounds too.
-A `tap` on every press, a `pop` as each state lands, a `tick` per typed key, a
-`whoosh` on the big openings (card, chart, palette), and a light 120 BPM bed.
-The effects come from omnigami's own kit; `scripts/sounds/kit.json` says what
-each one is for. Name them in `cues()` and use them as they are. Mastered around −14 LUFS.
-
-The score's sound is `music.style`: here `'organic'` (plucked strings, a marimba, a shaker), as the reference's plants or botanicals brand has it. For the user's product, pick by what it is: `'organic'` for plants, food and drink, and other natural or handmade things; `'synth'` (oscillators, the default) for software and tools; `'felt'` (a sparse felt piano over a sub bass and a light kit) for a quiet, minimal film. In a break (`music.breaks`) the drums, bass and lead stop and the chords play on; the film's name seeds the key (always major), the progressions and the patterns.
+- **Effects** on each visual onset: a `tap` on every press (gain 0.65), one quiet `swish` as the card opens (the one
+  big growth, 0.32), a soft `pop` as each other state lands (0.4). No riser, no accent. Effects from the kit
+  (`scripts/sounds/kit.json` says what each is for); retiming a beat retimes its cue.
+- **The song** (`music/song.mp3`, glossy, bouncy synth-pop at 120 BPM, made for this skill): `song.mjs` starts it on a
+  bar line, lands one hit on the check (`--land 10`), where the drums stop (from its stems) and the rest closes and
+  fades. Once it lands, the result's pops are left out. Effects sit 6 dB under it; mastered around −14 LUFS.
+- **`--music`** gives a synthesised 120 BPM bed instead (`music.style`: `'organic'` for plants, food and drink,
+  `'synth'` for software and tools, `'felt'` for a quiet film).
 
 ## Banned
 
-Cuts; a second shape; bouncy easing on text; glows; gradients on UI chrome;
-particle bursts; icons with mismatched strokes; unmotivated dead time; text
-overlapping text during a swap; anything that looks like a
-template; invented features.
+Cuts; a second shape; a piece the product doesn't have; sample data as a caption; a caption that names a feature
+instead of what it does for the viewer; a click with no press; a cursor that snaps; anything that appears or vanishes
+in one frame; text over text in a swap; bouncy easing on text; glows; gradients on UI chrome; particles; icons with
+mismatched strokes; holds on the product's own working; dead time that isn't a read or a result.
 
 ## Engine rules
 
-- `seek(t)` paints from `t` only: no `Date`, `performance.now()`, unseeded `Math.random`, timers or network.
-- A CPU-backed canvas (`getContext('2d', { willReadFrequently: true })`), and helper canvases created the same way.
-- `ctx.reset()` at the start of every frame, so no canvas state carries over.
-- Every file the film loads is inside its folder; fonts load in `prepare()`.
+- `seek(t, values)` paints from its arguments only: no `Date`, `performance.now()`, unseeded `Math.random`, timers or
+  network.
+- CPU-backed canvases (`getContext('2d', { willReadFrequently: true })`), helper canvases too; `ctx.reset()` at the
+  start of every frame.
+- Every file the film loads is inside its folder; fonts and images load in `prepare()`.

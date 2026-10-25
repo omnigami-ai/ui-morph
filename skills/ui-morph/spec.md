@@ -1,48 +1,92 @@
-# Remake spec: @twoclipping's UI morph → Fennick (a fictional company)
+# Reference spec: Fennick, skip the next box
 
-Reference: https://x.com/twoclipping/status/2103273003555402193 (local copy
-`reference/motion/twoclipping-ui-morph.mp4`, not committed). Made in code by
-Opus 5.5 from the creator's published prompt. Measured with
-`tools/study/container.py` (container box per frame at 60 fps) and on
-full-resolution stills of every state.
+The reference film's tables as its code holds them (`reference/index.html`), so an adaptation can see what moves
+together. The story in words is `reference/STORY.md`; the grammar and its numbers are `style.md`.
 
 ## Format
-1440 × 1440, 60 fps, 14.0 s (840 frames), loops (last frame = first).
-120 BPM: a beat every 0.5 s, something changes on every beat.
-Canvas `rgb(233,235,230)`, a faint lighter centre. Black and white UI, Geist.
-One container, never cut, morphing size, radius and colour on springs with a
-tiny overshoot; content swaps with a short blur; a cursor drives every change.
 
-## States (on-screen box at 1440 px; t = when the morph into it starts)
+1440 × 1440, 60 fps, 16.0 s (960 frames), loops (the last frame is the first). 120 BPM, 8 bars. Square only.
 
-| t (s) | Reference | Box w × h, radius | Fennick |
+## The times (`T`)
+
+| Key | t (s) | What |
+|---|---|---|
+| `ask` | 1.00 | caption 1 |
+| `open` | 3.00 | click 1: the button opens the card (morph at 3.08) |
+| `skip` | 6.50 | click 2: the card's "Skip a box" opens the chooser (morph at 6.58) |
+| `pick` | 9.00 | click 3: 10 Dec |
+| `save` | 9.62 | the chooser collapses into the loader |
+| `done` | 10.00 | the check (the song's landing) |
+| `toast` | 10.40 | the result |
+| `promise` | 11.50 | caption 4 |
+| `close` | 13.50 | back to the button and the wordmark |
+
+## The container (`BOX`: t, w, h, radius, lum, cx, cy, [spring])
+
+| Row | t | w × h | Radius | Lum | Spring |
+|---|---|---|---|---|---|
+| 0 button | 0 | 540 × 205 | pill | 0.03 | 280/19 |
+| 1 card | 3.08 | 1040 × 560 | 64 | 0.03 | 280/19 |
+| 2 chooser | 6.58 | 1191 × 169 | pill | 1 | 280/19 |
+| 3 loader | 9.62 | 221 × 221 | pill | 0.03 | 280/27 |
+| 4 check | 10.00 | 230 × 230 | pill | 0.03 | 280/19 |
+| 5 toast | 10.40 | from its words × 180 | pill | 0.03 | 280/25 |
+| 6 button | 13.50 | 540 × 205 | pill | 0.03 | 280/19 |
+
+All centred at (720, 791). Content (`CONTENT`): button, card, chooser, loader, check, toast (its words wait 0.13 s),
+button, each from its row's time.
+
+## Captions (`CAPTIONS`: start, field, the height of its state)
+
+| Start | Words | Sits above |
+|---|---|---|
+| 0 | the wordmark | button (205) |
+| 1.00 | `ask`: "Plans changed?" | button (205) |
+| 3.08 | `step1`: "Skip the next box." | card (560) |
+| 6.58 | `step2`: "Pick a new date." | chooser (169) |
+| 9.62 | none (the caption leaves as the loader comes) | |
+| 11.50 | `promise`: "Skip, swap or pause any time." | toast (180) |
+| 13.50 | the wordmark | button (205) |
+
+## The cursor (`CUR`: arrival, x, y, the row it works on) and its clicks
+
+| Arrives | Point | On | Then |
 |---|---|---|---|
-| 0.00 | Generate button | 641 × 205, pill, black | Build your box |
-| 0.55 | loader (click at 0.50) | 221 circle | loader |
-| 0.93 | check draws | 230 circle | check |
-| 1.27 | dynamic island: art + waveform | 863 × 219, pill | the Yuzu & Fennel can on its colour + rising bubbles |
-| 1.80 | player (click at 1.73) | 996 × 633, r 67 | box card: Yuzu & Fennel, Box #10482, its delivery week |
-| 2.33, 2.70 | pause → play → pause | | pause / resume the box |
-| 2.80–3.57 | scrub the progress bar | | scrub from Packed through Shipped to Delivered |
-| 3.72 | volume slider | 1075 × 185, pill | fizz level (bubbles appear as it rises) |
-| 4.13–4.77 | drag down, then up past max | stretches to 1166 wide, left edge fixed | same |
-| 5.10 | release, springs back | | |
-| 5.27 | toggle (on) | 490 × 274, pill | toggle |
-| 5.55 / 5.85 / 6.10 | flips off / on / off | off = grey track | same |
-| 6.27 | tabs, knob becomes indicator | 1191 × 169, white pill | Day / Week / Month |
-| 6.80, 7.07 | Week, Month (edges on different springs) | | same |
-| 7.27 | chart opens | 1099 × 843, r 44, white | cans shipped, 1,284 |
-| 7.47–8.00 | count up, line draws | | |
-| 7.87–8.80 | tooltip scrub | | |
-| 9.17 | click Week: counts down, curve reshapes | | 312 |
-| 9.73 | search pill | 871 × 210, r 59, white | "Find a flavour" |
-| 10.07 | command palette | 1039 × 813, r 35 | Add Yuzu & Fennel, Download receipt, Skip a box, Track order #10482, Build your box |
-| 10.53–10.90 | type "frame", list filters | 1243 × 571, r 41 | type "box" |
-| 11.30–11.53 | hover, select (row turns black), enter | | Build your box |
-| 11.77 | toast with check | 965 × 180, pill, black | Tea, but it fizzes. |
-| 12.57 | back to the button | 641 × 205 | Build your box |
-| 14.00 | loop | | |
+| 0, 2.0 | 1268, 1150 | its corner | sets off at 2.0 |
+| 2.5 | 838, 824 | button | rests; the button lightens (hover from 2.5); click at 3.0 |
+| 5.5 | (held) | | sets off at 5.5 |
+| 6.0 | 613, 986 | card ("Skip a box") | rests; the ghost button washes (hover from 6.0); click at 6.5 |
+| 8.0 | (held) | | sets off at 8.0 |
+| 8.5 | 790, 822 | chooser (10 Dec) | rests; the segment washes (hover from 8.5); click at 9.0 |
+| 9.25 → 10.15 | 1268, 1150 | its corner | stays to the loop |
 
-## Keep / change
-Keep: every box, radius, colour, time, spring, cursor path, blur swap.
-Change: words, icons, the art tile (Fennick's can on its yuzu colour), the ink and paper (Fennick's), data.
+`CLICKS` = 3.0, 6.5, 9.0: each a press of the pressed piece and of the cursor (`env`). The hover times (2.5, 6.0,
+8.5) are written in `box()`, `C.card` and `C.chooser`: they are the cursor's arrivals and move with them.
+
+## Words (`DEFAULTS` and `FIELDS`, editable in the preview)
+
+| Field | Default | Max |
+|---|---|---|
+| `button` | Your box | 12 |
+| `ask` | Plans changed? | 22 |
+| `step1` | Skip the next box. | 22 |
+| `step2` | Pick a new date. | 22 |
+| `toast` | Skipped. Next box ships 10 Dec. | 34 |
+| `promise` | Skip, swap or pause any time. | 30 |
+
+The card's words and the dates (`CARD`, `DATES`) are sample data from the shop, not fields.
+
+## Sound (`cues()`)
+
+| t | Sound | Gain |
+|---|---|---|
+| 3.00, 6.50, 9.00 | tap | 0.65 |
+| 3.08 | swish (the card opening) | 0.32 |
+| 6.58, 9.62, 10.00, 10.40, 13.50 | pop | 0.40 (after the song lands at 10, left out) |
+
+Render: `--audio music/song.mp3 --bpm 120 --land 10 --sound --blur 4`; poster at 4.4 s (the card and its caption).
+
+## Review times (`keyTimes`)
+
+0.5, 1.3, 1.9, 2.6, 3.0, 3.25, 4.4, 6.1, 6.5, 6.75, 7.6, 8.7, 9.05, 9.4, 9.75, 10.15, 10.55, 11.2, 11.75, 12.8, 13.65,
+14.6, 15.9: inside every state and around every event.

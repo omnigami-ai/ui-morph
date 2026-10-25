@@ -1,8 +1,8 @@
 {
   "name": "omnigami-ui-morph",
   "displayName": "UI morph",
-  "version": "1.0.1",
-  "description": "Create or revise a 14-second UI-morph product film from real screens and actions, with one continuous shape, spring motion, a cursor and sound. Plan the story around the product, deliver an editable local preview and square, wide and tall MP4s, and reuse brand assets for the next film. Use for product launch clips, feature announcements and UI teasers.",
+  "version": "1.0.4",
+  "description": "Make a 16-second square UI-morph film of one real job in the user's product. One shape that never cuts walks through it, each morph being what the click before it opens (the product's button becomes its card, the card its control, the control a loader, a check and the product's own result), with a cursor that presses every step, a caption per step in the product's headline face, springs, blur hand-offs and a song, looping pixel for pixel. Plans the story with the user, delivers an editable local preview and a 1:1 MP4. Use for feature announcements, launch clips, landing-page loops and UI teasers.",
   "author": {
     "name": "omnigami",
     "url": "https://omnigami.ai"

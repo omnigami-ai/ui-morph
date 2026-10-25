@@ -1,8 +1,8 @@
 # UI morph · omnigami
 
-One shape, never cut, morphing through your product.
+One shape, never cut, walking through one real task in your product.
 
-A 14-second launch film built around what your product really does. One container morphs through its screens and actions, driven by a cursor and cut to the beat. You review the short story, then watch and revise the film.
+A 16-second square film of one thing people do in your product, start to finish. One container becomes each step in turn: your button, the card it opens, the choice on it, then done and your product’s own confirmation. A cursor presses every step, a caption says what each one does for you, and the song lands on the check. It loops. You review the short story first, then watch and revise the film.
 
 Watch it play live, and change its words, at [omnigami.ai/skills/ui-morph](https://omnigami.ai/skills/ui-morph).
 
@@ -24,7 +24,7 @@ npx skills add omnigami-ai/ui-morph
 Or copy `skills/ui-morph/` into your agent's skills folder (for Claude Code, `~/.claude/skills/ui-morph/`). Then ask:
 
 ```
-Make a launch video for https://your-product.com
+Make a short film of one task in https://your-product.com
 ```
 
 ## What it runs

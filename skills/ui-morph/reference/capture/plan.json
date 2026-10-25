@@ -1,0 +1,27 @@
+{
+ "url": "http://localhost:4403/fennick/app/#/order/10482",
+ "viewport": "desktop",
+ "ready": "html.ready",
+ "rects": {
+  "bar": ".bar",
+  "plan": ".plan-card",
+  "skip": "[data-action=\"skip\"]",
+  "change-flavours": "[data-action=\"change-flavours\"]",
+  "dates": "[data-skip-to]*",
+  "notice": ".notice"
+ },
+ "steps": [
+  { "rects": "order" },
+  { "eval": "scrollTo(0, 0)" },
+  { "capture": "bar", "around": ".bar", "pad": 0, "scale": 2 },
+  { "capture": "next-box", "around": ".plan-card", "pad": 24, "scale": 2 },
+  { "click": "[data-action=\"skip\"]" },
+  { "wait": 300 },
+  { "rects": "pick-date" },
+  { "capture": "pick-date", "around": ".plan-card", "pad": 24, "scale": 2 },
+  { "click": "[data-skip-to=\"1\"]" },
+  { "wait": 300 },
+  { "rects": "skipped" },
+  { "capture": "skipped", "around": ".plan-card", "pad": 24, "scale": 2 }
+ ]
+}
