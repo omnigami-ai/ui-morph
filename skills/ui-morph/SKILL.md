@@ -5,6 +5,8 @@ description: Make a 16-second square UI-morph film of one real job in the user's
 
 # UI morph
 
+For Japanese, Korean or Chinese product pages, keep the copy in that language and set the film’s `lang` to the page’s `<html lang>`; bundled Noto faces and phrase breaks handle the text.
+
 Make a short film of one real job in the user's product, told by one container that never cuts. The container is
 each piece of the job in turn: the button that starts it, the card that button opens, the control on that card, the
 product working, done, and the product's own result; then the button again, so it loops. A cursor drives every change,

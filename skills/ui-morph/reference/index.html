@@ -19,9 +19,9 @@
   const { clamp, lerp, spring, track, loadFont, loadImage, roundRect, easeOutExpo } = window.kit;
   const W = 1440, H = 1440, CX = 720, FPS = 60, DURATION = 16;
   const canvas = document.getElementById('c');
-  const g = canvas.getContext('2d', { willReadFrequently: true });
+  const g = kit.textContext(canvas.getContext('2d', { willReadFrequently: true }));
   const layer = document.createElement('canvas'); layer.width = W; layer.height = H;
-  const L = layer.getContext('2d', { willReadFrequently: true });
+  const L = kit.textContext(layer.getContext('2d', { willReadFrequently: true }));
   const F = (w) => (s) => `${w} ${s}px "DM Sans"`;
   const DISPLAY = (s) => `800 ${s}px "Fennick Display"`; // Bricolage Grotesque at the shop's headline width (84%)
   // ADAPT: the product's colours (Fennick's: cast/fennick/brand.md, app.css): ink and paper are the container's two
@@ -161,7 +161,7 @@
   }
 
   // ---------- drawing helpers: KEEP textAt (centred on the capitals); ADAPT the icons and buttons to the product's ----------
-  function textAt(c, s, x, y, font, size, colour, align = 'left') {
+  function textAt(c, s, x, y, font, size, colour, align = 'left') { s = kit.copyText(s);
     c.font = font(size); c.fillStyle = colour; c.textAlign = align; window.kit.centreText(c, s, x, y);
     return c.measureText(s).width;
   }
@@ -170,12 +170,12 @@
     skip: new Path2D('M5 6.5l6 5.5-6 5.5M12 6.5l6 5.5-6 5.5'),
     swap: new Path2D('M5 8.5h13M14.5 5l3.5 3.5-3.5 3.5M19 15.5H6M9.5 12 6 15.5 9.5 19'),
   };
-  function icon(c, name, x, y, s, colour) {
+  function icon(c, name, x, y, s, colour) { s = kit.copyText(s);
     c.save(); c.translate(x - s / 2, y - s / 2); c.scale(s / 24, s / 24);
     c.strokeStyle = colour; c.lineWidth = 1.75; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(ICONS[name]); c.restore();
   }
   // a shop button (pill): icon and label centred; ghost = outlined, else filled paper on the ink card
-  function shopButton(c, x, cy, w, h, label, name, ghost, hov, press) {
+  function shopButton(c, x, cy, w, h, label, name, ghost, hov, press) { label = kit.copyText(label);
     const s = 1 - 0.04 * press;
     c.save(); c.translate(x + w / 2, cy); c.scale(s, s); c.translate(-(x + w / 2), -cy);
     roundRect(c, x, cy - h / 2, w, h, h / 2);
@@ -285,11 +285,12 @@
         g.drawImage(A.mark, CX - mw / 2, y + s.dy - mh * (85.8 / 120.8), mw, mh); g.restore();
         continue;
       }
-      const words = String(V[key]).split(/\s+/).filter(Boolean);
-      g.save(); stage(g); g.letterSpacing = `${-0.02 * CAP_SIZE}px`; g.font = DISPLAY(CAP_SIZE);
-      let space = g.measureText(' ').width, ws = words.map((w) => g.measureText(w).width), total = ws.reduce((a, b) => a + b, 0) + space * (words.length - 1);
+      const words = kit.words(String(V[key]), /\s+/).filter(Boolean);
+      const gapCount = kit.hasCJK(V[key]) ? words.slice(0,-1).filter((_,i)=>kit.wordGap(V[key],i)).length : words.length-1;
+      g.save(); stage(g); g.letterSpacing = kit.hasCJK(V[key])?'0px':`${-0.02 * CAP_SIZE}px`; g.font = DISPLAY(CAP_SIZE);
+      let space = g.measureText(' ').width, ws = words.map((w) => g.measureText(w).width), total = ws.reduce((a, b) => a + b, 0) + space * gapCount;
       let size = CAP_SIZE;
-      if (total > CAP_MAX) { size = CAP_SIZE * CAP_MAX / total; g.letterSpacing = `${-0.02 * size}px`; g.font = DISPLAY(size); space = g.measureText(' ').width; ws = words.map((w) => g.measureText(w).width); total = ws.reduce((a, b) => a + b, 0) + space * (words.length - 1); }
+      if (total > CAP_MAX) { size = CAP_SIZE * CAP_MAX / total; g.letterSpacing = kit.hasCJK(V[key])?'0px':`${-0.02 * size}px`; g.font = DISPLAY(size); space = g.measureText(' ').width; ws = words.map((w) => g.measureText(w).width); total = ws.reduce((a, b) => a + b, 0) + space * gapCount; }
       let x = CX - total / 2;
       g.fillStyle = INK; g.textAlign = 'left';
       words.forEach((w, j) => {
@@ -298,7 +299,7 @@
           g.globalAlpha = s.a; g.filter = s.blur > 0.3 ? `blur(${s.blur * S.k}px)` : 'none';
           window.kit.centreText(g, w, x, y + s.dy);
         }
-        x += ws[j] + space;
+        x += ws[j] + (kit.hasCJK(V[key]) && !kit.wordGap(V[key],j) ? 0 : space);
       });
       g.restore();
     }
@@ -306,7 +307,7 @@
 
   // ---------- KEEP: drawing (ADAPT the ground's colour to the product's paper, a shade deeper) ----------
   let stage = (c) => c.setTransform(1, 0, 0, 1, 0, 0);
-  function drawCursor(x, y, s) {
+  function drawCursor(x, y, s) { s = kit.copyText(s);
     g.save(); g.translate(x, y); g.scale(s, s);
     g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 46); g.lineTo(11, 35); g.lineTo(19, 53); g.lineTo(27, 49.5); g.lineTo(19, 32); g.lineTo(34, 32); g.closePath();
     g.shadowColor = 'rgba(0,0,0,0.3)'; g.shadowBlur = 10 * S.k; g.shadowOffsetY = 4 * S.k;
@@ -372,10 +373,10 @@
     sections: [{ from: 0, to: 1, pad: 0.75, hats: 0.35 }, { from: 1, to: 7, kick: 0.7, hats: 0.6, bass: 0.6, pad: 0.6 }, { from: 7, to: 8, pad: 0.75, hats: 0.35 }],
   };
   const STATES = [[0, 'Brand'], [T.ask, 'Plans changed?'], [T.open + LAG, 'Next box'], [T.skip + LAG, 'New date'], [T.save, 'Saving'], [T.done, 'Done'], [T.toast, 'Toast'], [T.close, 'Brand']];
-  window.template = { fps: FPS, duration: DURATION, sizes: Object.fromEntries(Object.entries(SHAPES).map(([n, sh]) => [n, sh.size])), width: W, height: H, defaults: () => ({ size: '1:1', ...DEFAULTS }), fields: FIELDS, states: STATES, prepare, seek: (t, values) => seek(t, values), cues, music,
+  window.template = kit.film({ fps: FPS, duration: DURATION, sizes: Object.fromEntries(Object.entries(SHAPES).map(([n, sh]) => [n, sh.size])), width: W, height: H, defaults: () => ({ size: '1:1', ...DEFAULTS }), fields: FIELDS, states: STATES, prepare, seek: (t, values) => seek(t, values), cues, music,
     // inside every state and around every event, for the sheet and the review strips
-    keyTimes: [0.5, 1.3, 1.9, 2.6, 3.0, 3.25, 4.4, 6.1, 6.5, 6.75, 7.6, 8.7, 9.05, 9.4, 9.75, 10.15, 10.55, 11.2, 11.75, 12.8, 13.65, 14.6, 15.9] };
+    keyTimes: [0.5, 1.3, 1.9, 2.6, 3.0, 3.25, 4.4, 6.1, 6.5, 6.75, 7.6, 8.7, 9.05, 9.4, 9.75, 10.15, 10.55, 11.2, 11.75, 12.8, 13.65, 14.6, 15.9] });
   const q = new URLSearchParams(location.search);
-  if (window.parent === window && !q.has('render')) prepare().then(() => { const t0 = performance.now(); const size = q.get('size') || '1:1'; const loop = () => { seek(((performance.now() - t0) / 1000) % DURATION, { size }); requestAnimationFrame(loop); }; loop(); });
+  if (window.parent === window && !q.has('render')) window.template.prepare().then(() => { const t0 = performance.now(); const size = q.get('size') || '1:1'; const loop = () => { seek(((performance.now() - t0) / 1000) % DURATION, { size }); requestAnimationFrame(loop); }; loop(); });
 })();
 </script>

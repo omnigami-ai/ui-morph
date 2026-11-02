@@ -2,7 +2,7 @@
 
 One shape, never cut, walking through one real task in your product.
 
-A 16-second square film of one thing people do in your product, start to finish. One container becomes each step in turn: your button, the card it opens, the choice on it, then done and your product’s own confirmation. A cursor presses every step, a caption says what each one does for you, and the song lands on the check. It loops. You review the short story first, then watch and revise the film.
+One thing people do in your product, start to finish, in a short square loop. One container becomes each step in turn, from your button to your product’s own confirmation, as a cursor presses and a caption says what each step does for you.
 
 Watch it play live, and change its words, at [omnigami.ai/skills/ui-morph](https://omnigami.ai/skills/ui-morph).
 
