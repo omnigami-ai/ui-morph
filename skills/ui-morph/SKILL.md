@@ -1,6 +1,9 @@
 ---
 name: ui-morph
-description: Make a 16-second square UI-morph film of one real job in the user's product. One shape that never cuts walks through it, each morph being what the click before it opens (the product's button becomes its card, the card its control, the control a loader, a check and the product's own result), with a cursor that presses every step, a caption per step in the product's headline face, springs, blur hand-offs and a song, looping pixel for pixel. Plans the story with the user, delivers an editable local preview and a 1:1 MP4. Use for feature announcements, launch clips, landing-page loops and UI teasers.
+description: >-
+  UI animation of one real task in your product: one shape that never cuts morphs from button to card to control to
+  result, with a cursor, captions and a song, as a 16-second looping square MP4. Use for feature announcements, launch
+  clips, landing-page loops, UI animations and UI teasers.
 ---
 
 # UI morph
