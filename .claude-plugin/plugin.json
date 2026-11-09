@@ -1,7 +1,7 @@
 {
   "name": "omnigami-ui-morph",
   "displayName": "UI morph",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "UI animation of one real task in your product: one shape that never cuts morphs from button to card to control to result, with a cursor, captions and a song, as a 16-second looping square MP4. Use for feature announcements, launch clips, landing-page loops, UI animations and UI teasers.",
   "author": {
     "name": "omnigami",
